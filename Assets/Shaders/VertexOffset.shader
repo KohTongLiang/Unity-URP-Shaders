@@ -7,7 +7,7 @@
         _Color2 ("Color 2", Color) = (1,1,1,1)
         _ColorStart ("Start Color", Range(0,1)) = 1
         _ColorEnd ("End Color", Range(0,1)) = 0
-        _WaveAmp ("Wave Amplitude", Range(0, 0.2)) = 0.1
+        _WaveAmp ("Wave Amplitude", Range(0, 10)) = 0.1
     }
     SubShader
     {
@@ -58,19 +58,6 @@
             float _ColorEnd;
             float _WaveAmp;
 
-            v2f vert(appdata v)
-            {
-                v2f o;
-
-                // Offset vertex y position to create waves
-                float wave = cos((v.uv.y - _Time.y * 0.1) * TAU * 5);
-                v.vertex.y = wave * _WaveAmp;
-
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.normal = UnityObjectToWorldNormal(v.normal);
-                o.uv = v.uv;
-                return o;
-            }
 
             // Can change where the gradient starts
             float InverseLerp(float a, float b, float v)
@@ -78,10 +65,35 @@
                 return (v - a) / (b - a);
             }
 
+            // Create wavy patterns that will spread from the center
+            float GetWave(float2 uv)
+            {
+                float2 uvsCentered = uv * 2 - 1; // Shifts UV 0,0 to the middle
+                float radialDistance = length(uvsCentered); // Get scalar value of coordinates
+                float wave = cos((radialDistance - _Time.y * 0.1) * TAU * 5) + 0.5 + 0.5;
+                wave *= 1 - radialDistance;
+                return wave;
+            }
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+
+                // Offset vertex y position to create waves
+                float wave = cos((v.uv.y - _Time.y * 0.1) * TAU * 5);
+                // v.vertex.y = wave * _WaveAmp;
+                v.vertex.y = GetWave(v.uv) * _WaveAmp;
+
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.normal = UnityObjectToWorldNormal(v.normal);
+                o.uv = v.uv;
+                return o;
+            }
+
             fixed4 frag(v2f i) : SV_Target
             {
-                float wave = cos((i.uv.y - _Time.y * 0.1) * TAU * 5) + 0.5 + 0.5;
-                return wave;
+                // float wave = cos((i.uv.y - _Time.y * 0.1) * TAU * 5) + 0.5 + 0.5;
+                return GetWave(i.uv);
             }
             ENDCG
         }
